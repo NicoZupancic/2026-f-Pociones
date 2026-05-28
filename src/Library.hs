@@ -1,104 +1,120 @@
 module Library where
 import PdePreludat
+import GHC.Num (Num, subtract)
 
 doble :: Number -> Number
 doble numero = numero + numero
----------------------------POSTRES---------------------------
-data Postre = UnPostre {
-    sabores :: [String],
-    peso :: Number,
-    temperatura :: Number
-} deriving (Show, Eq)
 
-unBizcochoBorracho :: Postre 
-unBizcochoBorracho = UnPostre {
-    sabores = ["fruta", "crema"],
-    peso = 100,
-    temperatura = 25
+data Heroe = UnHeroe {
+    vida :: Number,
+    defensa :: Number,
+    ataque :: Number
+} deriving Show
+
+caballero :: Heroe
+caballero = UnHeroe {
+    vida = 1000,
+    defensa = 20,
+    ataque = 50
 }
 
-type Hechizo = Postre -> Postre
-
-incendio :: Hechizo 
-incendio postre = postre {
-    temperatura = temperatura postre + 1,
-    peso = peso postre * 0.95
+pepita :: Heroe 
+pepita = UnHeroe {
+    vida = 1001,
+    defensa = 21,
+    ataque = 51
 }
 
-immobulus :: Hechizo
-immobulus postre =  postre { temperatura = 0 }
+type Modificacion = Number -> Number
 
-wingardiumLeviosa :: Hechizo 
-wingardiumLeviosa postre = postre {
-    sabores = "concentrado" : sabores postre,
-    peso = peso postre * 0.9
-}
+poder :: Heroe -> Number
+poder heroe = 3 * defensa heroe + ataque heroe + vida heroe /2
 
-diffindo :: Number -> Hechizo
-diffindo porcentaje postre = postre {
-    peso = peso postre * (1 - porcentaje / 100)
-}
+cambiarVida :: Modificacion -> Heroe -> Heroe
+cambiarVida modificacion heroe = heroe {vida = modificacion (vida heroe)} 
 
-riddikulus :: String -> Hechizo
-riddikulus sabor postre = postre {
-    sabores = reverse sabor : sabores postre
-}
+cambiarDefensa :: Modificacion -> Heroe -> Heroe
+cambiarDefensa modificacion heroe = heroe {defensa = modificacion (defensa heroe)}
 
-avadaKedavra :: Hechizo 
-avadaKedavra postre = (immobulus postre) { sabores = []}
+cambiarAtaque :: Modificacion -> Heroe -> Heroe
+cambiarAtaque modificacion heroe = heroe {ataque = modificacion (ataque heroe)}
 
-postresListos :: Postre -> Bool
-postresListos postre = peso postre > 0 && (not . null . sabores) postre 
-                       && temperatura postre > 0
+sumarVida :: Number -> Heroe -> Heroe
+sumarVida numero  = cambiarVida (+ numero)
 
-mesaLista :: Hechizo -> [Postre] -> Bool
-mesaLista hechizo = all postresListos . map hechizo
+type Pocion = Heroe -> Heroe
 
-promedio :: [Number] -> Number
-promedio [] = 0
-promedio lista = sum lista / length lista
+pocionBase :: Pocion
+pocionBase = sumarVida 10
 
-promedioPostres :: [Postre] -> Number
-promedioPostres  = promedio . map peso . filter postresListos 
+pocionPremium :: Pocion
+pocionPremium = pocionBase . pocionBase
 
----------------------------MAGOS---------------------------
-data Mago = UnMago {
-    hechizosAprendidos :: [Hechizo],
-    horrocruxes :: Number
-}
+crazyPotion :: Pocion
+crazyPotion = cambiarVida (*1.33) . pocionPremium . cambiarAtaque (*2)
 
-aprenderHechizo :: Hechizo -> Mago -> Mago
-aprenderHechizo hechizo mago = mago {
-    hechizosAprendidos = hechizo : hechizosAprendidos mago
-}
+agua :: Pocion
+agua heroe = heroe
 
-ganarHorrocrux :: Mago -> Mago
-ganarHorrocrux mago = mago { horrocruxes = horrocruxes mago + 1 }
+pocionElite :: Pocion
+pocionElite heroe | esPoderoso heroe = cambiarDefensa (*10) heroe
+                  | otherwise        = agua heroe
 
-practicarUnHechizo :: Hechizo -> Postre -> Mago -> Mago
-practicarUnHechizo hechizo postre mago | hechizo postre == avadaKedavra postre = (ganarHorrocrux . aprenderHechizo hechizo) mago
-                                       | otherwise                             = aprenderHechizo hechizo mago
+esPoderoso :: Heroe -> Bool
+esPoderoso heroe = poder heroe > 100
 
-cantidadDeSabores :: Postre -> Hechizo -> Number
-cantidadDeSabores postre hechizo = length (sabores (hechizo postre))
+pocionArtesanal :: Number -> Pocion
+pocionArtesanal cantidad = pocionBase . cambiarAtaque (/cantidad) . pocionBase
 
-hechizoGanador :: Postre -> Hechizo -> Hechizo -> Hechizo
-hechizoGanador postre h1 h2 
-    | cantidadDeSabores postre h1 >= cantidadDeSabores postre h2 = h1
-    | otherwise                                                  = h2
+pocionArriesgada :: Pocion
+pocionArriesgada = pocionBase . cambiarDefensa (\x -> 3) . crazyPotion
 
-mejorHechizo :: Postre -> Mago -> Hechizo
-mejorHechizo postre mago = foldl1 (hechizoGanador postre) (hechizosAprendidos mago)
+licuadoDePociones :: Pocion -> Pocion
+licuadoDePociones pocion = pocionArtesanal 10 . pocion . pocionBase
 
----------------------------INFINITA MAGIA---------------------------
-postreInfinita :: [Postre]
-postreInfinita = repeat unBizcochoBorracho
+aplicarDefensaArtesanal :: Number -> Heroe -> Heroe
+aplicarDefensaArtesanal defensa = pocionArtesanal 5 . cambiarDefensa (+ defensa)
 
-magoInfinito :: Mago
-magoInfinito = UnMago {
-    hechizosAprendidos = repeat incendio,
-    horrocruxes = 1
-}
+defensaSegun :: Heroe -> Number
+defensaSegun heroe | ataque heroe > 100 = 50
+                   | ataque heroe >= 50 && ataque heroe < 100 = 30
+                   | otherwise          = 10
 
+pocionGradual :: Pocion
+pocionGradual heroe = aplicarDefensaArtesanal (defensaSegun heroe) heroe
 
- 
+pocionVampirica :: Pocion
+pocionVampirica heroe | defensa heroe > vida heroe = (sacarDefensa . aumentarVida) heroe
+                      | otherwise                  = (sacarVida . aumentarAtaque) heroe
+sacarDefensa :: Pocion
+sacarDefensa = cambiarDefensa (\x -> x - 20)
+
+aumentarVida :: Pocion
+aumentarVida = cambiarVida (+40)
+
+sacarVida :: Pocion
+sacarVida = cambiarVida (\x -> x - 10)
+
+aumentarAtaque :: Pocion
+aumentarAtaque = cambiarAtaque (+30)
+
+leSirve :: Pocion -> Heroe -> Bool
+leSirve pocion heroe = not (esPoderoso heroe) && esPoderoso (pocion heroe)
+
+aQuienesLeSirve :: Pocion -> [Heroe] -> [Heroe]
+aQuienesLeSirve pocion = filter (leSirve pocion)
+
+sujetoDePrueba :: Heroe
+sujetoDePrueba = UnHeroe {vida = 100, defensa = 30, ataque = 25}
+
+potencial :: Pocion -> Number
+potencial pocion = poder (pocion sujetoDePrueba) 
+
+pocionesMasFuertes :: Number -> [Pocion] -> [Pocion]
+pocionesMasFuertes valor = filter ((> valor) . potencial)
+
+unHeroeEsFuerte :: Pocion -> Heroe -> Bool
+unHeroeEsFuerte pocion heroe = poder heroe > potencial pocion
+
+algunoEsSuficientementeFuerte :: Pocion -> [Heroe] -> Bool
+algunoEsSuficientementeFuerte pocion = any (unHeroeEsFuerte pocion)
